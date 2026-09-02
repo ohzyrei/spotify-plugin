@@ -1,7 +1,6 @@
 (function() {
     "use strict";
 
-    // ---- 1. Network ad blocking (fetch + XHR) ----
     const AD_PATTERNS = [
         /ads\.spotify\.com/,
         /ad-[\w]+\.spotify\.com/,
@@ -26,7 +25,6 @@
         return origXHROpen.call(this, method, url, ...rest);
     };
 
-    // ---- 2. Premium spoof ----
     function spoofPremium() {
         try {
             localStorage.setItem("spicetify-exp-features", JSON.stringify({
@@ -37,12 +35,10 @@
             }));
             sessionStorage.setItem("premium", "true");
             document.cookie = "premium=true; path=/";
-            // Try to set product state if available later
         } catch(e) {}
     }
     spoofPremium();
 
-    // ---- 3. CSS hide ads ----
     const style = document.createElement("style");
     style.id = "spotify-patcher-adblock";
     style.textContent = `
@@ -64,7 +60,6 @@
     `;
     document.head.appendChild(style);
 
-    // ---- 4. Remove ad elements dynamically ----
     function cleanAds() {
         document.querySelectorAll([
             '[data-testid="context-item-info-ads"]',
@@ -86,7 +81,6 @@
     observer.observe(document.documentElement, { childList: true, subtree: true });
     setInterval(cleanAds, 2000);
 
-    // ---- 5. Badge (no logo) ----
     (function addBadge() {
         const badge = document.createElement("div");
         badge.id = "spotify-patcher-badge";
@@ -120,7 +114,6 @@
         append();
     })();
 
-    // ---- 6. Player ad patching (continuous) ----
     function patchPlayer() {
         let player = window.Spotify?.Player ||
                      window?.spicetify?.Player ||
@@ -160,16 +153,13 @@
     }
     setTimeout(patchPlayer, 1000);
 
-    // ---- 7. Deep adblockify (Spicetify/Webpack based, with fallbacks) ----
     function initDeepAdblock() {
-        // Wait for necessary objects
         const checkReady = () => {
             if (window.Spicetify && window.Spicetify.Events) {
                 runDeepAdblock();
             } else if (window.webpackChunkclient_web || window.rspackChunkclient_web) {
                 runDeepAdblock();
             } else if (window.Spotify && window.Spotify.Platform) {
-                // Attempt to use Spotify's internal Platform
                 runDeepAdblock();
             } else {
                 setTimeout(checkReady, 1000);
@@ -180,7 +170,6 @@
         function runDeepAdblock() {
             console.log("[patcher] Running deep adblockify");
 
-            // Helper: wait for a value
             const waitFor = async (fn, interval = 50, attempts = 20) => {
                 for (let i = 0; i < attempts; i++) {
                     const res = fn();
@@ -256,7 +245,6 @@
             };
 
             (async function deepMain() {
-                // Try to get Platform and AdManagers from various sources
                 let Platform = window.Spicetify?.Platform || window.Spotify?.Platform;
                 let AdManagers = Platform?.AdManagers;
                 let UserAPI = Platform?.UserAPI;
@@ -264,11 +252,9 @@
                 let CosmosAsync = window.Spicetify?.CosmosAsync || window.Spotify?.CosmosAsync;
                 let version = Platform?.version?.split(".").map(Number) || [1,2,0];
 
-                // If no Platform, try to find via webpack
                 if (!Platform) {
                     const webpack = await loadWebpack();
                     if (webpack.functionModules.length) {
-                        // Try to find Platform from modules
                         const plat = webpack.functionModules.find(m => m?.AdManagers && m?.UserAPI);
                         if (plat) {
                             Platform = plat;
@@ -293,7 +279,6 @@
                     try { slots = await CosmosAsync.get("sp://ads/v1/slots"); } catch {}
                 }
 
-                // Disable ads via productState
                 const disableAds = async () => {
                     if (productState?.putOverridesValues) {
                         await productState.putOverridesValues({
@@ -302,7 +287,6 @@
                     }
                 };
 
-                // Configure AdManagers
                 const configureAdManagers = async () => {
                     try {
                         const { billboard, leaderboard, sponsoredPlaylist } = AdManagers;
@@ -370,7 +354,6 @@
                     setTimeout(() => handleAdSlot({ adSlotEvent: { slotId: id } }), 50);
                 }
 
-                // Enable experimental features
                 const enableExpFeatures = async () => {
                     try {
                         const exp = JSON.parse(localStorage.getItem("spicetify-exp-features") || "{}");
@@ -415,7 +398,6 @@
                 enableExpFeatures();
                 setTimeout(enableExpFeatures, 3000);
 
-                // Update slot settings periodically
                 setTimeout(async () => {
                     for (const slot of slots) {
                         updateSlotSettings(slot.slotId || slot.slot_id);
@@ -426,7 +408,6 @@
     }
     setTimeout(initDeepAdblock, 2000);
 
-    // ---- 8. SectionBlock fetch interceptor for home page ----
     const API_PATHFINDER = "api-partner.spotify.com/pathfinder";
     const API_RECOMMENDATIONS = "api.spotify.com/v1/views/personalized-recommendations";
 
